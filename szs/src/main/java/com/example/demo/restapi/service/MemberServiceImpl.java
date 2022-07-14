@@ -1,6 +1,7 @@
 package com.example.demo.restapi.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.restapi.entity.Member;
@@ -11,22 +12,21 @@ public class MemberServiceImpl implements MemberService {
 	
 	@Autowired
 	private MemberRepository memberRepository;
+	
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
 	@Override
 	public void signup(Member member) {
-		if((member.getName().equals("홍길동") && member.getRegNo().equals("860824-1655068"))
-				||(member.getName().equals("김둘리") && member.getRegNo().equals("921108-1582816"))
-				||(member.getName().equals("마징가") && member.getRegNo().equals("880601-2455116"))
-				||(member.getName().equals("베지터") && member.getRegNo().equals("910411-1656116"))
-				||(member.getName().equals("손오공") && member.getRegNo().equals("820326-2715702"))) {
-			memberRepository.save(member);
-		}
+		memberRepository.save(member);
 	}
 
 	@Override
-	public Member login(String userId, String password) {
-		// TODO Auto-generated method stub
-		return null;
+	public Member login(String userId, String password) throws Exception {
+		Member member = memberRepository.findByUserid(userId);
+		if(member == null) throw new Exception ("해당 사용자가 없습니다.");
+		if(!passwordEncoder.matches(password, member.getPassword())) throw new Exception("비밀번호가 틀렸습니다.");
+		return member;
 	}
 
 }

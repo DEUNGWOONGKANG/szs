@@ -10,7 +10,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -23,7 +22,7 @@ import lombok.NoArgsConstructor;
 public class Member {
 	@Id
 	@Column(name = "userid", nullable = false, unique = true)
-	private String userId;
+	private String userid;
 	
 	@Column(name = "userpw", nullable = false)
 	private String password;
@@ -32,7 +31,7 @@ public class Member {
 	private String name;
 	
 	@Column(name = "regno", nullable = false)
-	private String regNo;
+	private String regno;
 	
 	public void encodePassword(PasswordEncoder passwordEncoder){
         this.password = passwordEncoder.encode(password);

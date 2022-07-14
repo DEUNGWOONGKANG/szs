@@ -1,15 +1,25 @@
 package com.example.demo.restapi.controller;
 
 
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.restapi.config.JwtTokenConfig;
 import com.example.demo.restapi.config.Seed;
 import com.example.demo.restapi.entity.Member;
+import com.example.demo.restapi.service.CookieService;
 import com.example.demo.restapi.service.MemberService;
 
 import io.swagger.annotations.Api;
@@ -27,6 +37,12 @@ public class MemberController {
 	private MemberService memberService;
 	
 	@Autowired
+	private JwtTokenConfig jwtTokenConfig;
+	
+	@Autowired
+	private CookieService cookieService;
+	
+	@Autowired
 	PasswordEncoder passwordEncoder;
 	
 	@ApiOperation(value = "회원 가입", notes = "신규 회원 가입")
@@ -36,19 +52,41 @@ public class MemberController {
             ,@ApiParam(value = "이름", required = true) @RequestParam String name
             ,@ApiParam(value = "주민등록번호", required = true) @RequestParam String regNo) {
 		Member member = Member.builder()
-				.userId(userId)
+				.userid(userId)
 				.password(passwordEncoder.encode(password))
 				.name(name)
-				.regNo(Seed.encrypt(regNo))
+				.regno(Seed.encrypt(regNo))
 				.build();
-		memberService.signup(member);
+		if((name.equals("홍길동") && regNo.equals("860824-1655068"))
+				||(name.equals("김둘리") && regNo.equals("921108-1582816"))
+				||(name.equals("마징가") && regNo.equals("880601-2455116"))
+				||(name.equals("베지터") && regNo.equals("910411-1656116"))
+				||(name.equals("손오공") && regNo.equals("820326-2715702"))) {
+			memberService.signup(member);
+		}
 		return member;
 	}
 	
 	@ApiOperation(value = "로그인", notes = "로그인")
-	@PostMapping(value = "/login")
-	public void login(@ApiParam(value = "아이디", required = true) @RequestParam String userId, 
-			@ApiParam(value = "비밀번호", required = true) @RequestParam String password) {
+	@GetMapping(value = "/login")
+	public Map<String, Object> login(@ApiParam(value = "아이디", required = true) @RequestParam String userId, 
+			@ApiParam(value = "비밀번호", required = true) @RequestParam String password, HttpServletRequest request, HttpServletResponse response) throws Exception {
+		Map<String, Object> map = new HashMap<>();
+		try {
+			Member member = memberService.login(userId, password);
+			String token = jwtTokenConfig.createToken(member.getUserid());
+			String rToken = jwtTokenConfig.refreshToken(member.getUserid());
+			
+			Cookie loginToken = cookieService.createCookie(JwtTokenConfig.TOKEN_NAME, token);
+			Cookie refreshToken = cookieService.createCookie(JwtTokenConfig.REFRESH_TOKEN_NAME, rToken);
+			response.addCookie(loginToken);
+			response.addCookie(refreshToken);
+			map.put("result", "success");
+			return map;
+		} catch(Exception e) {
+			map.put("result", "fail : " + e.getMessage());
+			return map;
+		}
 	}
 	
 
