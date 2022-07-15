@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -36,41 +37,52 @@ public class JwtFilter extends OncePerRequestFilter{
 	@Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
 
-		final String requestTokenHeader = request.getHeader("Authorization");
+		final Cookie jwtToken = cookieService.getCookie(request,JwtTokenConfig.TOKEN_NAME);
 
         String userId = null;
-        String jwtToken = null;
+        String jwt = null;
+        String refreshJwt = null;
 
-        // JWT Token is in the form "Bearer token". Remove Bearer word and get only the Token
-        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
-            jwtToken = requestTokenHeader.substring(7);
-            try {
-            	userId = jwtConfig.getUserId(jwtToken);
-            } catch (IllegalArgumentException e) {
-                System.out.println("Unable to get JWT Token");
-            } catch (ExpiredJwtException e) {
-                System.out.println("JWT Token has expired");
+        try{
+            if(jwtToken != null){
+                jwt = jwtToken.getValue();
+                userId = jwtConfig.getUserId(jwt);
             }
-        } else {
-            logger.warn("JWT Token does not begin with Bearer String");
+            if(userId!=null){
+                UserDetails userDetails = memberDetailService.loadUserByUsername(userId);
+
+                if(jwtConfig.validToken(jwt,userDetails)){
+                    UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(userDetails,null,userDetails.getAuthorities());
+                    usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+                }
+            }
+        }catch (ExpiredJwtException e){
+            Cookie refreshToken = cookieService.getCookie(request,JwtTokenConfig.REFRESH_TOKEN_NAME);
+            if(refreshToken!=null){
+                refreshJwt = refreshToken.getValue();
+            }
+        }catch(Exception e){
+
         }
 
-        // 토큰을 받으면 유효성을 검사.
-        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            UserDetails userDetails = memberDetailService.loadUserByUsername(userId);
-
-            // 토큰이 유효한 경우.. 수동으로 인증을 설정하도록 Spring Security를 구성
-            if (jwtConfig.validToken(jwtToken, userDetails)) {
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                usernamePasswordAuthenticationToken
-                        .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // 컨텍스트에서 인증을 설정한 후, 현재 사용자가 인증되었음을 지정. Spring Security Configurations 성공적으로 통과.
+        try{
+            if(refreshJwt != null){
+            	userId = jwtConfig.getUserId(refreshJwt);
+                UserDetails userDetails = memberDetailService.loadUserByUsername(userId);
+                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(userDetails,null,userDetails.getAuthorities());
+                usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+
+                String newToken =jwtConfig.createToken(userId);
+
+                Cookie newAccessToken = cookieService.createCookie(JwtTokenConfig.TOKEN_NAME,newToken);
+                response.addCookie(newAccessToken);
             }
+        }catch(ExpiredJwtException e){
+
         }
-        chain.doFilter(request, response);
+
+        chain.doFilter(request,response);
     }
 }

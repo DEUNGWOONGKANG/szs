@@ -8,4 +8,6 @@ import com.example.demo.restapi.entity.Member;
 public interface MemberRepository extends JpaRepository<Member, String> {
 
 	Member findByUserid(String userId);
+
+	Member findUsernameRegnoByUserid(String userId);
 }

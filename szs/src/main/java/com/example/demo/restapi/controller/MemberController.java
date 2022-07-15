@@ -9,12 +9,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.restapi.config.JwtTokenConfig;
 import com.example.demo.restapi.config.Seed;
@@ -45,7 +47,7 @@ public class MemberController {
 	@Autowired
 	PasswordEncoder passwordEncoder;
 	
-	@ApiOperation(value = "회원 가입", notes = "신규 회원 가입")
+	@ApiOperation(value = "/szs/signup", notes = "신규 회원 가입")
 	@PostMapping(value = "/signup")
 	public Member signUp(@ApiParam(value = "아이디", required = true) @RequestParam String userId, 
             @ApiParam(value = "비밀번호", required = true) @RequestParam String password
@@ -67,7 +69,7 @@ public class MemberController {
 		return member;
 	}
 	
-	@ApiOperation(value = "로그인", notes = "로그인")
+	@ApiOperation(value = "/szs/login", notes = "로그인")
 	@GetMapping(value = "/login")
 	public Map<String, Object> login(@ApiParam(value = "아이디", required = true) @RequestParam String userId, 
 			@ApiParam(value = "비밀번호", required = true) @RequestParam String password, HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -89,5 +91,61 @@ public class MemberController {
 		}
 	}
 	
+	@ApiOperation(value = "/szs/me", notes = "내 정보 가져오기")
+	@GetMapping(value = "/me")
+	public Map<String, Object> getMyInfo(HttpServletRequest request, HttpServletResponse response) {
+		Map<String, Object> map = new HashMap<>();
+		
+		Cookie[] cookie = request.getCookies();
+		String token = null;
+		String userId = null;
+		for(Cookie c : cookie) {
+			if(c.getName().equals(JwtTokenConfig.TOKEN_NAME)) {
+				token = c.getValue();
+			}
+		}
+		if(token == null) {
+			map.put("result", "토큰 없음");
+		}else{
+			userId = jwtTokenConfig.getUserId(token);
+			Member member = memberService.getMyInfo(userId);
+			Member info = Member.builder()
+					.userid(member.getUserid())
+					.name(member.getName())
+					.regno(Seed.decrypt(member.getRegno().getBytes()))
+					.build();
+			if(member != null) {
+            	map.put("MyInfo", info);
+            }
+		}
+        return map;
+    }
+	
+	@ApiOperation(value = "/szs/scrap", notes = "내 데이터 스크랩하기")
+	@GetMapping(value = "/scrap")
+	public Map<String, Object> scrapData(HttpServletRequest request, HttpServletResponse response) {
+		Map<String, Object> map = new HashMap<>();
+		
+		Cookie[] cookie = request.getCookies();
+		String token = null;
+		String userId = null;
+		for(Cookie c : cookie) {
+			if(c.getName().equals(JwtTokenConfig.TOKEN_NAME)) {
+				token = c.getValue();
+			}
+		}
+		if(token == null) {
+			map.put("result", "토큰 없음");
+		}else{
+			userId = jwtTokenConfig.getUserId(token);
+			Member member = memberService.getMyInfo(userId);
+			if(member != null) {
+				RestTemplate template = new RestTemplate();
+				String url = "https://codetest.3o3.co.kr/v1/scrap";
+				
+			}
+		}
+		return map;
+	}
 
 }

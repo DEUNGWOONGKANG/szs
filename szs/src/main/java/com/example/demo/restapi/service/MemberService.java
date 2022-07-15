@@ -6,4 +6,6 @@ public interface MemberService {
 	void signup(Member member);
 	
 	Member login(String userId, String password) throws Exception;
+
+	Member getMyInfo(String userId);
 }

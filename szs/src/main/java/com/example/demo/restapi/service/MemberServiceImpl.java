@@ -1,5 +1,6 @@
 package com.example.demo.restapi.service;
 
+import org.apache.catalina.security.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,11 @@ public class MemberServiceImpl implements MemberService {
 		if(member == null) throw new Exception ("해당 사용자가 없습니다.");
 		if(!passwordEncoder.matches(password, member.getPassword())) throw new Exception("비밀번호가 틀렸습니다.");
 		return member;
+	}
+
+	@Override
+	public Member getMyInfo(String userId) {
+		return memberRepository.findUsernameRegnoByUserid(userId);
 	}
 
 }
