@@ -8,14 +8,21 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.demo.restapi.config.JwtTokenConfig;
@@ -121,12 +128,13 @@ public class MemberController {
         return map;
     }
 	
+	@SuppressWarnings("unchecked")
 	@ApiOperation(value = "/szs/scrap", notes = "내 데이터 스크랩하기")
 	@GetMapping(value = "/scrap")
-	public Map<String, Object> scrapData(HttpServletRequest request, HttpServletResponse response) {
-		Map<String, Object> map = new HashMap<>();
+	public JSONObject scrapData(HttpServletRequest httpRequest, HttpServletResponse httpResponse) {
+		JSONObject result = new JSONObject();
 		
-		Cookie[] cookie = request.getCookies();
+		Cookie[] cookie = httpRequest.getCookies();
 		String token = null;
 		String userId = null;
 		for(Cookie c : cookie) {
@@ -135,17 +143,43 @@ public class MemberController {
 			}
 		}
 		if(token == null) {
-			map.put("result", "토큰 없음");
+			result.put("Status", "토큰없음");
 		}else{
 			userId = jwtTokenConfig.getUserId(token);
 			Member member = memberService.getMyInfo(userId);
 			if(member != null) {
-				RestTemplate template = new RestTemplate();
-				String url = "https://codetest.3o3.co.kr/v1/scrap";
+			try {
+				HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+				factory.setConnectTimeout(20000);
+				factory.setReadTimeout(20000);
+				RestTemplate template = new RestTemplate(factory);
 				
+				JSONObject request = new JSONObject();
+				request.put("name", member.getName());
+				request.put("regNo", Seed.decrypt(member.getRegno().getBytes()));
+				HttpHeaders header = new HttpHeaders();
+				header.setContentType(MediaType.APPLICATION_JSON);
+		        HttpEntity<String> entity = new HttpEntity<String>(request.toString(), header);
+		        
+		        String url = "https://codetest.3o3.co.kr/v1/scrap";
+		        JSONObject answer = template.postForObject(url, entity, JSONObject.class);
+		        String status = answer.get("status").toString();
+		        if(status.equals("success")) {
+		        }else{
+		        	result.put("error", answer.get("errors"));
+		        }
+		        result = answer;
+		        } catch (HttpClientErrorException | HttpServerErrorException e) {
+		            result.put("Status", e.getRawStatusCode());
+		            result.put("body"  , e.getStatusText());
+		        } catch (Exception e) {
+		            result.put("Status", "999");
+		            result.put("body"  , "excpetion오류");
+		        }
 			}
+				
 		}
-		return map;
+		return result;
 	}
 
 }
