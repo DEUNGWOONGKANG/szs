@@ -22,18 +22,13 @@ import lombok.NoArgsConstructor;
 @Builder
 public class Spend {
 	
-//	"총사용금액": "2,000,000",
-//	"소득구분": "산출세액"
 	
 	@Id 
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long id;
 	
-	@Column(name = "username", nullable = false)
-	private String name;
-	
-	@Column(name = "regno", nullable = false)
-	private String regno;
+	@Column(name = "userid", nullable = false)
+	private String userid;
 	
 	@Column(name = "type", nullable = false)
 	private String type;
