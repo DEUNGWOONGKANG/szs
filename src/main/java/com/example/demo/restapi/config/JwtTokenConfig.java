@@ -75,7 +75,6 @@ public class JwtTokenConfig {
         return jwt;
     }
 
-    //
     public Boolean validToken(String token, UserDetails userDetails) {
         final String userId = getUserId(token);
 

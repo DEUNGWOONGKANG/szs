@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -38,6 +39,7 @@ import com.example.demo.restapi.service.SpendService;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import lombok.RequiredArgsConstructor;
 
 @Api(tags = {"Member"}) 
@@ -90,10 +92,11 @@ public class MemberController {
 	
 	@ApiOperation(value = "/szs/login", notes = "로그인")
 	@PostMapping(value = "/login")
-	public Map<String, Object> login(@RequestBody Member member, HttpServletRequest request, HttpServletResponse response) throws Exception {
+	public Map<String, Object> login(@ApiParam(value = "아이디", required = true) @RequestParam String userId, 
+            @ApiParam(value = "비밀번호", required = true) @RequestParam String password, HttpServletRequest request, HttpServletResponse response) throws Exception {
 		Map<String, Object> result = new LinkedHashMap<>();
 		try {
-			Member user = memberService.login(member.getUserid(), member.getPassword());
+			Member user = memberService.login(userId, password);
 			String token = jwtTokenConfig.createToken(user.getUserid());
 			String rToken = jwtTokenConfig.refreshToken(user.getUserid());
 			
